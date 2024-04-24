@@ -24,7 +24,7 @@ const openDatabase = (dbName: string, version: number, objectStore: string): Pro
       if (!db.objectStoreNames.contains(objectStore)) {
         console.log(`${objectStore}は作成されてません。作成します。`);
         const objectStoreCreate = db.createObjectStore(objectStore, { keyPath: 'id', autoIncrement: true });
-        objectStoreCreate.createIndex('dogidIndex', 'dogid', { unique: false });
+        objectStoreCreate.createIndex('keyIdindex', 'Indexkeyid', { unique: false });
         // インデックスを作成する場合は以下のようにします
         // objectStoreCreate.createIndex('nameIndex', 'name', { unique: false });
       }
@@ -132,13 +132,13 @@ const deleteRequest = (dbname: string, version: number, objectStore: string, rec
     })
 }
 
-const addMemoData = <T>(dbName: string, version: number, id: string, dogid: string, hour: string, objectStore: string, dataArray: T[]): Promise<void> => {
+const addMemoData = <T>(dbName: string, version: number, Indexkeyid: string,key:string,value:string,objectStore: string): Promise<void> => {
   return openDatabase(dbName, version, objectStore)
     .then(db => {
       return new Promise<void>((resolve, reject) => {
         const transaction = db.transaction([objectStore], 'readwrite');
         const objectStoreCreate = transaction.objectStore(objectStore);
-        const data = { id, dogid, hour, dataArray };
+        const data = { key,Indexkeyid,value};
         console.log(`${JSON.stringify(data)}これはデータです`)
         const request = objectStoreCreate.add(data);
         request.onsuccess = () => {
@@ -150,7 +150,7 @@ const addMemoData = <T>(dbName: string, version: number, id: string, dogid: stri
       });
     })
     .catch(error => {
-      throw new Error(`Failed to add memo data: ${error}オブジェクトストア${objectStore}, id=${id}`);
+      throw new Error(`Failed to add memo data: ${error}オブジェクトストア${objectStore}, id=${Indexkeyid}`);
     });
 };
 
