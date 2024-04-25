@@ -49,7 +49,7 @@ const checkDatabaseExists = (dbName: string, version: number, objectStore: strin
     });
 };
 //   <T>(dbName: string, version: number, id: string, dogid: string, hour: string, objectStore: string, dataArray: T[]): 
-const upDateData = <T>(dbname: string, version: number, id: string, dogid: string, hour: string, objectStore:any, InsertdataArray: T[]): Promise<void> => {
+const upDateData = <T>(dbname: string, version: number, id: string, dogid: string, hour: string, objectStore: any, InsertdataArray: T[]): Promise<void> => {
   // ?DB存在確認
   // ?非同期通信開始
 
@@ -68,7 +68,7 @@ const upDateData = <T>(dbname: string, version: number, id: string, dogid: strin
       getRequest.onsuccess = () => {
         const record = getRequest.result;
         record.dataArray[0] = InsertdataArray[0]
-        record.hour= hour
+        record.hour = hour
         // record.dataArray[0].memo = "変更"
         // displayedValues[index] !== null && typeof displayedValues[index] === 'object' && Object.keys(displayedValues[index]).length >
         // ?[{"text":"","memo":"変更ff","date":"2024-03-28T19:00:00.000Z","time":"04:00","id":"afyugzdGFH8it1zpuExE","dogdataid":"tOnbJbaMwKwSlJLtIj1M"}]
@@ -132,13 +132,13 @@ const deleteRequest = (dbname: string, version: number, objectStore: string, rec
     })
 }
 
-const addMemoData = <T>(dbName: string, version: number, Indexkeyid: string,key:string,value:string,objectStore: string): Promise<void> => {
+const addMemoData = <T>(dbName: string, version: number, Indexkeyid: string, key: string, value: string, objectStore: string): Promise<void> => {
   return openDatabase(dbName, version, objectStore)
     .then(db => {
       return new Promise<void>((resolve, reject) => {
         const transaction = db.transaction([objectStore], 'readwrite');
         const objectStoreCreate = transaction.objectStore(objectStore);
-        const data = { key,Indexkeyid,value};
+        const data = { key, Indexkeyid, value };
         console.log(`${JSON.stringify(data)}これはデータです`)
         const request = objectStoreCreate.add(data);
         request.onsuccess = () => {
@@ -275,8 +275,100 @@ const searchItems = (dbName: string, objectStoreName: string, indexName: string,
 //   })
 
 // }
+async function getIndexItems(
+  dbName: string,
+  objectStoreName: string,
+  version: number,
+  indexName: string,
+  keyname: string
+): Promise<any[]> {
+  try {
+    const db = await openDatabase(dbName, version, objectStoreName);
+    const transaction = db.transaction(objectStoreName, 'readonly');
+    const objectStore = transaction.objectStore(objectStoreName);
+    const index = objectStore.index(indexName);
+    const keyRange = IDBKeyRange.only(keyname);
+
+    return new Promise((resolve, reject) => {
+      const cursorRequest = index.openCursor(keyRange);
+      const results: any[] = [];  // 結果を保存する配列
+
+      cursorRequest.onsuccess = (event: Event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+        if (cursor) {
+          results.push(cursor.value);  // 結果配列に値を追加
+          console.log(`Found item with id ${cursor.value.id} and content:`, cursor.value);
+          cursor.continue();  // 次の一致するアイテムへ進む
+        } else {
+          // console.log("No more items found.");
+          // console.log(typeof results,"は帰ってくる値の型")
+          // console.log(results[3000],"は帰ってくる値")
+          // 以下が配列の中身
+          // {"key":"salmon","Indexkeyid":"600","value":"鮭"}
+          // 配列型のようだが、object型でかえってくる。
+          const length = Object.keys(results).length
+          console.log(length,"はオブジェクトの数")
+          resolve(results);  // 全ての結果を解決
+        }
+      };
+
+      cursorRequest.onerror = () => {
+        console.error("Cursor request failed.");
+        reject(cursorRequest.error);
+      };
+    });
+
+  } catch (error) {
+    console.error("Failed to open database:", error);
+    throw error;  // エラーを再スローして、呼び出し元でキャッチ可能にする
+  }
+}
+
+// INDEXをすべて取得する。
+const getAllIndexes = (dbName: string, objectStoreName: string, version: number): Promise<void | ((this: IDBTransaction, ev: Event) => any) | null> => {
+  return openDatabase(dbName, version, objectStoreName).then(db => {
+    const transaction = db.transaction(objectStoreName, 'readonly');
+    const objectStore = transaction.objectStore(objectStoreName);
+    const indexNames = objectStore.indexNames;
+
+    // indexNamesはDOMStringListで、配列のように扱えるが、正確には配列ではないため、Array.fromを使用して配列に変換する
+    const indexes = Array.from(indexNames);
+
+    indexes.forEach(indexName => {
+      // console.log(`${indexName} はインデックス`);
+    });
+
+    // 各インデックスに対して処理を行う
+    indexes.forEach(indexName => {
+      console.log(`Index: ${indexName}`);
+      const myIndex = objectStore.index(indexName);
+      myIndex.openCursor().onsuccess = function (event) {
+        // IDBRequest として event.target を扱うための型アサーション
+        const request = event.target as IDBRequest<IDBCursorWithValue | null>;
+        if (request.result) {
+          const cursor = request.result;
+          // console.log(`キーを確認！！: ${cursor.key}, 値: ${JSON.stringify(cursor.value)}`);
+          cursor.continue();  // 次のアイテムへカーソルを進める
+        } else {
+          console.log('インデックス内の全アイテムの確認が完了しました。');
+        }
+      };
 
 
 
 
-export { openDatabase, checkDatabaseExists, deleteDatabase, addMemoData,addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData };
+      // ここで、各インデックスに対する追加の処理を行うことができます
+      // 例: myIndex.get() や myIndex.openCursor() などを使用
+    });
+    // トランザクションの完了を待つ
+    return transaction.oncomplete;
+  }).catch(error => {
+    console.error('データベース操作中にエラーが発生しました:', error);
+  });
+}
+
+
+
+
+
+export { openDatabase, checkDatabaseExists, deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes ,getIndexItems};
