@@ -7,7 +7,7 @@ import { resolve } from "path";
 const openDatabase = (dbName: string, version: number, objectStore: string): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(dbName, version);
-
+    let isNewDatabase = false;  // isNewDatabaseの初期値を設定
     request.onerror = () => reject(request.error);
 
     request.onsuccess = (event) => {
@@ -19,9 +19,9 @@ const openDatabase = (dbName: string, version: number, objectStore: string): Pro
     // バージョン変更トランザクション内でオブジェクトストアを作成する
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
-
+      const isNewDatabase = !db.objectStoreNames.contains(objectStore);
       // データベースを開いたときに既に存在するかどうかをチェックし、存在しない場合は作成する
-      if (!db.objectStoreNames.contains(objectStore)) {
+      if (isNewDatabase) {
         console.log(`${objectStore}は作成されてません。作成します。`);
         const objectStoreCreate = db.createObjectStore(objectStore, { keyPath: 'id', autoIncrement: true });
         objectStoreCreate.createIndex('keyIdindex', 'Indexkeyid', { unique: false });
@@ -32,6 +32,30 @@ const openDatabase = (dbName: string, version: number, objectStore: string): Pro
   });
 };
 
+const openDatabasenext = (dbName: string, version: number, objectStore: string): Promise<{ db: IDBDatabase, isNew: boolean }> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, version);
+    let isNewDatabase = false;  // isNewDatabaseの初期値を設定
+
+    request.onerror = () => reject(request.error);
+
+    request.onsuccess = () => {
+      const db = request.result as IDBDatabase;
+      console.log("データベースアクセス成功");
+      resolve({ db, isNew: isNewDatabase });  // dbとisNewDatabaseの両方を返す
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
+      isNewDatabase = !db.objectStoreNames.contains(objectStore);
+      if (isNewDatabase) {
+        console.log(`${objectStore}は作成されてません。作成します。`);
+        const objectStoreCreate = db.createObjectStore(objectStore, { keyPath: 'id', autoIncrement: true });
+        objectStoreCreate.createIndex('keyIdindex', 'Indexkeyid', { unique: false });
+      }
+    };
+  });
+};
 
 
 
@@ -307,7 +331,7 @@ async function getIndexItems(
           // {"key":"salmon","Indexkeyid":"600","value":"鮭"}
           // 配列型のようだが、object型でかえってくる。
           const length = Object.keys(results).length
-          console.log(length,"はオブジェクトの数")
+          console.log(length, "はオブジェクトの数")
           resolve(results);  // 全ての結果を解決
         }
       };
@@ -353,10 +377,6 @@ const getAllIndexes = (dbName: string, objectStoreName: string, version: number)
           console.log('インデックス内の全アイテムの確認が完了しました。');
         }
       };
-
-
-
-
       // ここで、各インデックスに対する追加の処理を行うことができます
       // 例: myIndex.get() や myIndex.openCursor() などを使用
     });
@@ -371,4 +391,4 @@ const getAllIndexes = (dbName: string, objectStoreName: string, version: number)
 
 
 
-export { openDatabase, checkDatabaseExists, deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes ,getIndexItems};
+export { openDatabase, openDatabasenext, checkDatabaseExists, deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems };
