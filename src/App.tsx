@@ -36,6 +36,7 @@ function App() {
   const [rondomdata, setRondomData] = useState<DisplayDataValue[]>([]);
   const [Indexkeys, setIndexkeys] = useState<string[]>([]);
   const [question, setQestion] = useState<string[]>([]);
+ 
   // フィルター管理する定数
   const [filteredData, setFilteredData] = useState<DisplayDataValue[]>([]);
 
@@ -87,7 +88,7 @@ function App() {
 
   //  ?ランダムデータにデータ一覧を代入する関数
   const rondomchoiceItemInset = () => {
-    alert("データ")
+    // alert("データ")
     setRondomData(displaydata)
 
   }
@@ -110,6 +111,25 @@ function App() {
     console.log(displaydata, "表示されるデータ")
 
   }
+
+  const removeItemById = async (id: number) => {
+    const index = rondomdata.findIndex((item) => item.id === id);
+    if (index !== -1) {
+      const updatedData = [
+        ...rondomdata.slice(0, index),
+        ...rondomdata.slice(index + 1),
+      ];
+      await setRondomData(updatedData);
+    }
+    alert(rondomdata.length)
+    // alert(id)
+
+    rondomdata.length === 0 ? alert("アイテムがなくなりました"): getRandom(rondomdata)
+  };
+
+
+
+
   const flgchange = () => {
     flg ? setFlag(false) : setFlag(true)
   }
@@ -184,7 +204,7 @@ function App() {
   useEffect(() => {
     if (initialized) { // 初期化が完了している場合のみアラートを表示
       if (questionchoice !== null) {
-        alert(`${questionchoice} はクエスチョンのアラート`);
+        // alert(`${questionchoice} はクエスチョンのアラート`);
       }
     } else {
       setInitialized(true); // コンポーネントの初回レンダリング後にinitializedをtrueに設定
@@ -193,19 +213,22 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
+        
+        {/* <img src={logo} className="App-logo" alt="logo" /> */}
+        <img src="/teacher_english_man_casual.png" className="App-logo" alt="Teacher" />
+        <div>シンプルな英単語アプリ</div>
+        {/* <p>
           Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
+        </p> */}
+        {/* <a
           className="App-link"
           href="https://reactjs.org"
           target="_blank"
           rel="noopener noreferrer"
         >
           Learn React!!
-        </a>
-        {flg ? <div>true</div> : <div>false</div>}
+        </a> */}
+        {/* {flg ? <div>true</div> : <div>false</div>}
 
         {questionchoice && questionchoice.length > 0 ? (
           <input type="text" placeholder={questionchoice} onInput={(e) => filterDataById(e.currentTarget.value)} />
@@ -213,12 +236,29 @@ function App() {
 
         {questionchoice.length > 0 ? (
           <button onClick={(e) => filterDataById(questionchoice)}>Filter Data</button>
-        ) : null}
+        ) : null} */}
 
+                {/* {displaydata.length > 0 ? (<button onClick={() => rondomchoiceItemInset()}>これをおすとランダムに問題が出力されるよ</button>) : 'データ未選択'} */}
+        {/* ユーザが選択した場合以下がなくなる */}
+     
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          {/* ローカルDBのインデックスに変更する。 */}
+          {Indexkeys.map((item, index) => (
+            // <div key = {index}>{item}</div>
+            <button key={index} onClick={() => choiceNumber(item)} style={{ width: "10%" }}>{item}</button>
+            // 
+          ))}
+        </div>
+
+        {rondomdata.length > 0 ? (<button onClick={() => getRandom(rondomdata)}>単語を表示する。</button>) : (Object.entries(displaydata).map(([key, value], index) => (
+          <div>アイテムがなくなりました。</div>
+        )))
+
+        }
 
         {filteredData.map((data) => (
           <div key={data.key}>
-             <div>
+            <div>
               {data.id}
             </div>
             <div>
@@ -226,12 +266,17 @@ function App() {
             </div>
             <div>
               {data.key}
-              <button onClick={() => flg ? setFlag(false):setFlag(true)}>答えを表示する</button>
-
             </div>
-           
             <div>
-              {flg ? data.value: ""}
+              <button onClick={() => flg ? setFlag(false) : setFlag(true)}>{flg ? "答えを非表示する。" : "答えを表示にする。"}</button>
+            </div>
+
+            <div>
+              {flg ? data.value : ""}
+            </div>
+            {/* 正解ボタン */}
+            <div>
+            {flg ? <button onClick={() => removeItemById(data.id)}>正解の場合押す</button> :"" }
             </div>
           </div>
 
@@ -250,8 +295,6 @@ function App() {
         <p key={key}>{key}: {displaydata}</p>
       ))} */}
         </div>
-
-        <div>以下から英語の問題を選択してください</div>
         {/* <div style={{ display: 'flex', justifyContent: 'center' }}>
           {Object.entries(Jsonitems).map(([key, value]) => (
             // <div key = {index}>{item}</div>
@@ -264,24 +307,7 @@ function App() {
             // 
           ))}
         </div> */}
-        {/* {displaydata.length > 0 ? (<button onClick={() => rondomchoiceItemInset()}>これをおすとランダムに問題が出力されるよ</button>) : 'データ未選択'} */}
-        {/* ユーザが選択した場合以下がなくなる */}
-        {rondomdata.length > 0 ? (<button onClick={() => getRandom(rondomdata)}>単語勉強スタート！</button>) : (Object.entries(displaydata).map(([key, value], index) => (
-          <div key={index}>
-            <span>{value.value}:</span>
-            <span>{value.key}</span>
-          </div>
-        )))
 
-        }
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          {/* ローカルDBのインデックスに変更する。 */}
-          {Indexkeys.map((item, index) => (
-            // <div key = {index}>{item}</div>
-            <button key={index} onClick={() => choiceNumber(item)} style={{ width: "10%" }}>{item}</button>
-            // 
-          ))}
-        </div>
 
       </body>
 
