@@ -30,18 +30,18 @@ function App() {
   // デフォルトで読みこむjsonファイル
   const [Jsonitems, JsonsetItems] = useState<typeof ItemData>(ItemData);
   const [loading, setLoading] = useState(false);  // ローディング状態管理用
-  // const [displaydata, setDisplayData] = useState<any>({});
   const [displaydata, setDisplayData] = useState<DisplayDataValue[]>([]);
   // 問題を選択した場合、以下にデータを入れ込む。
   const [rondomdata, setRondomData] = useState<DisplayDataValue[]>([]);
   const [Indexkeys, setIndexkeys] = useState<string[]>([]);
   const [question, setQestion] = useState<string[]>([]);
- 
+
   // フィルター管理する定数
   const [filteredData, setFilteredData] = useState<DisplayDataValue[]>([]);
 
   const [initialized, setInitialized] = useState(false); // 初期化完了をトラッキングする状態
-
+  // 
+  const [choicedatadisplay, setchoiceDatadisplay] = useState("");
   const [questionchoice, setQestionchoice] = useState("");
 
   // ?index.DBを利用する処理。
@@ -49,7 +49,11 @@ function App() {
   const version = 1;
   const objectID = 'myobjects'
   const IndexName = "keyIdindex"
-
+  // その日勉強したかどうかのチェックオブジェクト、
+  const datedata = "datelearning"
+  const datelearning = 'datelearning'
+  const dateversion = 1
+  const currentDate = new Date();
 
 
   // ?ランダムにデータを抽出する関数
@@ -96,8 +100,11 @@ function App() {
   const choiceNumber = async (num: string) => {
     // alert(num)
     // flg ? setFlag(false) : setFlag(true)
+    setchoiceDatadisplay(num)
     setLoading(true);  // ローディング開始
     try {
+
+      //選択した全てのデータ。 
       const result = await getIndexItems(dbName, objectID, version, IndexName, num)
       console.log(result, "結果確認")
       // ?問題配列に代入する。
@@ -108,23 +115,35 @@ function App() {
       console.error("Error fetching data:", error);
     };
     setLoading(false);  // ローディング終了
+    // 以下は問題出力時にセットする。
+    setFilteredData([]);
+
     console.log(displaydata, "表示されるデータ")
 
   }
 
-  const removeItemById = async (id: number) => {
+  const removeItemById = async (id: number, key: string) => {
     const index = rondomdata.findIndex((item) => item.id === id);
+    // アイテム数が0の時点では以下の処理が通る。
     if (index !== -1) {
       const updatedData = [
         ...rondomdata.slice(0, index),
         ...rondomdata.slice(index + 1),
       ];
-      await setRondomData(updatedData);
+      setRondomData(updatedData);
+      
     }
-    alert(rondomdata.length)
-    // alert(id)
 
-    rondomdata.length === 0 ? alert("アイテムがなくなりました"): getRandom(rondomdata)
+    // データベースが空になった場合。
+    if (rondomdata.length === 0) {
+      // const currentDate = new Date();
+      // const dateString = currentDate.toISOString();
+      // await addMemoData(datedata, dateversion, dateString, key, "本日済み", datelearning);
+      console.log("データがなくなった。")
+    } else {
+      // データベースが空でない場合。
+      getRandom(rondomdata);
+    }
   };
 
 
@@ -149,6 +168,7 @@ function App() {
     async function initializeDatabase() {
       try {
         const { db, isNew } = await openDatabasenext(dbName, version, objectID);
+        await openDatabasenext(datedata, dateversion, datelearning);
         if (isNew) {
           console.log('新規にデータベースが作成されました。');
           // ここでjsonファイルをいれる
@@ -199,7 +219,25 @@ function App() {
     // ?displaydataを取得する。
     console.log(typeof displaydata, "displayData updated");
     setRondomData(displaydata)
+    
   }, [displaydata]);
+
+  // ランダムデータを削除云々。
+  useEffect(() => {
+    if (displaydata.length > 0) {
+      if (rondomdata.length === 0) {
+        const currentDate = new Date();
+        const dateString = currentDate.toISOString();
+        // Indexkeyid
+        addMemoData(datedata, dateversion, dateString, displaydata[0].Indexkeyid, "本日済み", datelearning);
+        alert("選択した問題が0になりました。")
+      } else {
+        const displaydatereplace = JSON.stringify(displaydata)
+        // alert(`${displaydata.length}は残りのランダムデータ`)
+      }
+    }
+
+  }, [rondomdata])
 
   useEffect(() => {
     if (initialized) { // 初期化が完了している場合のみアラートを表示
@@ -213,10 +251,11 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        
+
         {/* <img src={logo} className="App-logo" alt="logo" /> */}
         <img src="/teacher_english_man_casual.png" className="App-logo" alt="Teacher" />
         <div>シンプルな英単語アプリ</div>
+        <div>{choicedatadisplay}</div>
         {/* <p>
           Edit <code>src/App.tsx</code> and save to reload.
         </p> */}
@@ -238,24 +277,24 @@ function App() {
           <button onClick={(e) => filterDataById(questionchoice)}>Filter Data</button>
         ) : null} */}
 
-                {/* {displaydata.length > 0 ? (<button onClick={() => rondomchoiceItemInset()}>これをおすとランダムに問題が出力されるよ</button>) : 'データ未選択'} */}
+        {/* {displaydata.length > 0 ? (<button onClick={() => rondomchoiceItemInset()}>これをおすとランダムに問題が出力されるよ</button>) : 'データ未選択'} */}
         {/* ユーザが選択した場合以下がなくなる */}
-     
+
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           {/* ローカルDBのインデックスに変更する。 */}
           {Indexkeys.map((item, index) => (
             // <div key = {index}>{item}</div>
+            // 番号を指定してランダムデータに表示する。
             <button key={index} onClick={() => choiceNumber(item)} style={{ width: "10%" }}>{item}</button>
             // 
           ))}
         </div>
 
-        {rondomdata.length > 0 ? (<button onClick={() => getRandom(rondomdata)}>単語を表示する。</button>) : (Object.entries(displaydata).map(([key, value], index) => (
+        {/* {rondomdata.length > 0 ? (<button onClick={() => getRandom(rondomdata)}>単語を表示する。</button>) : (Object.entries(displaydata).map(([key, value], index) => (
           <div>アイテムがなくなりました。</div>
-        )))
-
-        }
-
+        ))) */}
+        {rondomdata.length > 0 ? (<button onClick={() => getRandom(rondomdata)}>単語を表示する。</button>) : <div></div>}
+        {/* 単語を表示するを押下した時点で決定する。 filterdDateは問題一問の表示*/}
         {filteredData.map((data) => (
           <div key={data.key}>
             <div>
@@ -276,7 +315,10 @@ function App() {
             </div>
             {/* 正解ボタン */}
             <div>
-            {flg ? <button onClick={() => removeItemById(data.id)}>正解の場合押す</button> :"" }
+              {flg ? <button onClick={() => removeItemById(data.id, data.Indexkeyid)}>正解の場合押す</button> : ""}
+
+
+              {rondomdata.length > 0 ? (<div>{rondomdata.length}</div>) : (<div>{data.Indexkeyid}がなくなりました。</div>)}
             </div>
           </div>
 
