@@ -52,6 +52,10 @@ const openDatabasenext = (dbName: string, version: number, objectStore: string):
         console.log(`${objectStore}は作成されてません。作成します。`);
         const objectStoreCreate = db.createObjectStore(objectStore, { keyPath: 'id', autoIncrement: true });
         objectStoreCreate.createIndex('keyIdindex', 'Indexkeyid', { unique: false });
+        // isNewDatabase = true
+        // resolve({ db, isNew: isNewDatabase }); 
+        // ここが実行された場合、isNewはTRUE?
+
       }
     };
   });
@@ -387,8 +391,40 @@ const getAllIndexes = (dbName: string, objectStoreName: string, version: number)
   });
 }
 
+const getIndexKeys = (
+  dbName: string,
+  version: number,
+  objectStoreName: string,
+  indexName: string
+): Promise<string[]> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await openDatabase(dbName, version, objectStoreName);
+      const transaction = db.transaction(objectStoreName, 'readonly');
+      const objectStore = transaction.objectStore(objectStoreName);
+      const index = objectStore.index(indexName);
+      const request = index.openKeyCursor();
+      const keys = new Set<string>();
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursor>).result;
+        if (cursor) {
+          keys.add(cursor.key as string);
+          cursor.continue();
+        } else {
+          resolve(Array.from(keys));
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
 
 
 
 
-export { openDatabase, openDatabasenext, checkDatabaseExists, deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems };
+
+export { openDatabase, openDatabasenext, checkDatabaseExists, deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems ,getIndexKeys};

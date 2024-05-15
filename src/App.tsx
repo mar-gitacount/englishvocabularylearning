@@ -2,7 +2,7 @@
 // @ts-ignore
 import React, { useState, useEffect } from 'react';
 import ItemData from './data/items.json';
-import { checkDatabaseExists, openDatabase, addMemoData, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems, openDatabasenext } from './utils/indexDBUtils';
+import { checkDatabaseExists, openDatabase, addMemoData, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems, openDatabasenext, getIndexKeys } from './utils/indexDBUtils';
 import fs from 'fs';
 
 import logo from './logo.svg';
@@ -26,9 +26,21 @@ type DisplayDataValue = {
 function App() {
   const [items, setItems] = useState<string[]>([]);
   const [userchoiceitems, setUserchoiceItems] = useState<string[]>([]);
-  const [flg, setFlag] = useState(false)
+  const [flg, setFlag] = useState(false);
+  const [newdic, setNewdic] = useState<DisplayDataValue[]>([]);
   // デフォルトで読みこむjsonファイル
   const [Jsonitems, JsonsetItems] = useState<typeof ItemData>(ItemData);
+  // 日本語
+  const [formData, setFormData] = useState({ dictname: '', english: '', japan: '' });
+  // 英語辞書名をいれる
+  const [newdicName, setDicNewname] = useState("");
+  // 英単語
+  const [newenglishdata, setEnglishdata] = useState("");
+
+  // 日本語
+  const [newjapandata, setJapandata] = useState("");
+
+
   const [loading, setLoading] = useState(false);  // ローディング状態管理用
   const [displaydata, setDisplayData] = useState<DisplayDataValue[]>([]);
   // 問題を選択した場合、以下にデータを入れ込む。
@@ -85,7 +97,24 @@ function App() {
     console.log(finditem, "フィルター結果")
     setFilteredData(filtered);
   };
+  const handleChange = (event: any) => {
+    const { name, value } = event.target;
 
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      [name]: value,
+    }));
+  };
+
+
+  const handleSubmit = (event: any) => {
+    event.preventDefault();
+    // return addMemoData(dbName, version, Indexkey, k, item, objectID)
+    addMemoData(dbName, version, formData.dictname, formData.english, formData.japan, objectID)
+    alert(`入力された値${formData.dictname}`)
+    // alert(`入力された値: ${inputValue}`);
+    // ここにフォームの送信処理を追加します
+  };
 
 
 
@@ -131,7 +160,7 @@ function App() {
         ...rondomdata.slice(index + 1),
       ];
       setRondomData(updatedData);
-      
+
     }
 
     // データベースが空になった場合。
@@ -168,7 +197,10 @@ function App() {
     async function initializeDatabase() {
       try {
         const { db, isNew } = await openDatabasenext(dbName, version, objectID);
-        await openDatabasenext(datedata, dateversion, datelearning);
+        // 学習履歴DBに入れ込むよ。
+        // await openDatabasenext(datedata, dateversion, datelearning);
+
+
         if (isNew) {
           console.log('新規にデータベースが作成されました。');
           // ここでjsonファイルをいれる
@@ -183,7 +215,7 @@ function App() {
             // ここでは単一データのループが実行されている。
             Object.entries(value).forEach(([k, item]) => {
               // 以下をローカルDBに入れる。
-              // console.log(`大本キー${key} キー${k} アイテム${item}`)
+              console.log(`大本キー${key} キー${k} アイテム${item}`)
               // ?ここでアイテム数を追加している。
               return addMemoData(dbName, version, Indexkey, k, item, objectID)
             })
@@ -192,8 +224,22 @@ function App() {
             getAllIndexes(dbName, objectID, version)
 
           });
+     
         } else {
           console.log('データベースは既に存在しています。');
+          getIndexKeys(dbName, version, objectID, IndexName)
+          .then((keys) => {
+            console.log('インデックスキー:', keys);
+            keys.forEach((key) => {
+              console.log('インデックスキー:', key);
+              // キーごとに必要な処理をここに追加
+              setIndexkeys(prevItems => [...prevItems, key]);
+            });
+
+          })
+          .catch((error) => {
+            console.error('インデックスキーの取得に失敗しました:', error);
+          });
         }
         // データベース操作のコード
       } catch (error) {
@@ -201,11 +247,24 @@ function App() {
       }
     }
 
-    Object.entries(ItemData).forEach(([key, value]) => {
-      setItems(prevItems => [...prevItems, key]); // 状態にキーを追加
-      // 初めての場合、ここにいれる。
-      setIndexkeys(prevItems => [...prevItems, key]);
-    });
+    // Object.entries(ItemData).forEach(([key, value]) => {
+    //   setItems(prevItems => [...prevItems, key]); // 状態にキーを追加
+    //   // 初めての場合、ここにいれる。
+    //   setIndexkeys(prevItems => [...prevItems, key]);
+    // });
+    // getIndexKeys(dbName, version, objectID, IndexName)
+    //   .then((keys) => {
+    //     console.log('インデックスキー:', keys);
+    //     keys.forEach((key) => {
+    //       console.log('インデックスキー:', key);
+    //       // キーごとに必要な処理をここに追加
+    //       setIndexkeys(prevItems => [...prevItems, key]);
+    //     });
+
+    //   })
+    //   .catch((error) => {
+    //     console.error('インデックスキーの取得に失敗しました:', error);
+    //   });
     // INDEXDBを初期化
     initializeDatabase()
 
@@ -219,17 +278,19 @@ function App() {
     // ?displaydataを取得する。
     console.log(typeof displaydata, "displayData updated");
     setRondomData(displaydata)
-    
+
   }, [displaydata]);
 
   // ランダムデータを削除云々。
   useEffect(() => {
     if (displaydata.length > 0) {
       if (rondomdata.length === 0) {
-        const currentDate = new Date();
-        const dateString = currentDate.toISOString();
+        const currentDate = String(new Date());
+        alert(currentDate)
+        // const dateString = currentDate.toISOString();
+
         // Indexkeyid
-        addMemoData(datedata, dateversion, dateString, displaydata[0].Indexkeyid, "本日済み", datelearning);
+        addMemoData(datedata, dateversion, currentDate, displaydata[0].Indexkeyid, "本日済み", datelearning);
         alert("選択した問題が0になりました。")
       } else {
         const displaydatereplace = JSON.stringify(displaydata)
@@ -318,7 +379,7 @@ function App() {
               {flg ? <button onClick={() => removeItemById(data.id, data.Indexkeyid)}>正解の場合押す</button> : ""}
 
 
-              {rondomdata.length > 0 ? (<div>{rondomdata.length}</div>) : (<div>{data.Indexkeyid}がなくなりました。</div>)}
+              {rondomdata.length > 0 ? (<div>残り:{rondomdata.length}問</div>) : (<div>{data.Indexkeyid}がなくなりました。</div>)}
             </div>
           </div>
 
@@ -331,6 +392,44 @@ function App() {
       <body>
         {/* ここに値を入れ込む */}
         {/* ロードチェックする */}
+        <div>以下に入力して好きな単語帳をつくってね</div>
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="dictname">単語帳の名前:</label>
+            <input
+              type="text"
+              id="dictname"
+              name='dictname'
+              value={formData.dictname}
+              onChange={handleChange}
+              placeholder="単語帳の名前を入力してね" // これがプレースホルダー
+            />
+          </div>
+          <div>
+            <label htmlFor="english">英文</label>
+            <input
+              type="text"
+              id="english"
+              name='english'
+              value={formData.english}
+              onChange={handleChange}
+              placeholder="" // これがプレースホルダー
+            />
+          </div>
+          <div>
+            <label htmlFor="japan">日本語文</label>
+            <input
+              type="text"
+              id="japan"
+              name='japan'
+              value={formData.japan}
+              onChange={handleChange}
+              placeholder="" // これがプレースホルダー
+            />
+          </div>
+
+          <button type="submit">送信</button>
+        </form>
         {loading ? 'Loading...' : ''}
         <div>
           {/* {Object.keys(displaydata).map(key => (
