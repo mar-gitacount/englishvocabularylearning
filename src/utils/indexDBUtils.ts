@@ -140,25 +140,55 @@ const deleteDatabase = (dbName: string): Promise<void> => {
   });
 };
 
-const deleteRequest = (dbname: string, version: number, objectStore: string, recordkey: string): Promise<void> => {
-  return openDatabase(dbname, version, objectStore).then(db => {
-    return new Promise<void>((resolve, reject) => {
+const deleteRequest = (dbname: string, version: number, objectStore: string, primaryKey: any): Promise<void> => {
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(dbname, version);
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
+
       const transaction = db.transaction([objectStore], 'readwrite');
       const objectStoreName = transaction.objectStore(objectStore);
-      const deleteRequest = objectStoreName.delete(recordkey);
+      const deleteRequest = objectStoreName.delete(primaryKey);
+
       deleteRequest.onsuccess = () => {
-        console.log("レコード削除しました。", recordkey);
+        console.log("レコード削除しました。", primaryKey);
+       
       };
+
       deleteRequest.onerror = (error) => {
         console.log("レコードの削除中にエラーが発生", error);
-      }
-      // deleteRequest.onerror = ()
-    });
-  })
-    .catch(error => {
-      console.error("DB接続エラー:", error);
-    })
+        reject(error); // エラーが発生したらPromiseを拒否する
+      };
+
+      transaction.oncomplete = () => {
+        db.close(); // トランザクションが完了したらデータベースを閉じる
+        console.log("トランザクション終了")
+        resolve(); // 成功したらPromiseを解決する
+      };
+
+      transaction.onerror = (event:any) => {
+        console.error("トランザクション中にエラーが発生しました:", event.target.error);
+        reject(event.target.error);
+      };
+      
+
+    };
+
+    request.onupgradeneeded = (event) => {
+      // データベースのバージョンアップが必要な場合の処理を追加する
+    };
+
+    request.onblocked = () => {
+      // データベースがブロックされた場合の処理を追加する
+    };
+  });
 }
+
 
 const addMemoData = <T>(dbName: string, version: number, Indexkeyid: string, key: string, value: string, objectStore: string): Promise<void> => {
   return openDatabase(dbName, version, objectStore)

@@ -7,6 +7,7 @@ import fs from 'fs';
 
 import logo from './logo.svg';
 import './App.css';
+import { isTemplateMiddleOrTemplateTail } from 'typescript';
 
 interface Item {
   key: string;
@@ -39,6 +40,8 @@ function App() {
 
   // 日本語
   const [newjapandata, setJapandata] = useState("");
+
+  const [displaydataallshowflg, setdisplaydatasllshowflg] = useState(false)
 
 
   const [loading, setLoading] = useState(false);  // ローディング状態管理用
@@ -106,6 +109,17 @@ function App() {
     }));
   };
 
+  const itemdelete = (id: number) => {
+    alert(id)
+    // indexdbから削除かつdisplaydataからも削除する。
+    // deleteRequest(dbName,version,objectID,String(id))
+
+    deleteRequest(dbName, version, objectID, id)
+    const updatedData = displaydata.filter(item => item.id !== id);
+    // 新しい配列をステートにセットして要素を更新
+    setDisplayData(updatedData);
+
+  }
 
   const handleSubmit = (event: any) => {
     event.preventDefault();
@@ -205,7 +219,6 @@ function App() {
           console.log('新規にデータベースが作成されました。');
           // ここでjsonファイルをいれる
           // 新規データベースに対する初期化処理など
-
           // JSONのデータをINDEXDBに入れる。
           // jsonデータのおおまかなループ。
           Object.entries(ItemData).forEach(([key, value]) => {
@@ -224,22 +237,22 @@ function App() {
             getAllIndexes(dbName, objectID, version)
 
           });
-     
+
         } else {
           console.log('データベースは既に存在しています。');
           getIndexKeys(dbName, version, objectID, IndexName)
-          .then((keys) => {
-            console.log('インデックスキー:', keys);
-            keys.forEach((key) => {
-              console.log('インデックスキー:', key);
-              // キーごとに必要な処理をここに追加
-              setIndexkeys(prevItems => [...prevItems, key]);
-            });
+            .then((keys) => {
+              console.log('インデックスキー:', keys);
+              keys.forEach((key) => {
+                console.log('インデックスキー:', key);
+                // キーごとに必要な処理をここに追加
+                setIndexkeys(prevItems => [...prevItems, key]);
+              });
 
-          })
-          .catch((error) => {
-            console.error('インデックスキーの取得に失敗しました:', error);
-          });
+            })
+            .catch((error) => {
+              console.error('インデックスキーの取得に失敗しました:', error);
+            });
         }
         // データベース操作のコード
       } catch (error) {
@@ -312,11 +325,45 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-
         {/* <img src={logo} className="App-logo" alt="logo" /> */}
         <img src="/teacher_english_man_casual.png" className="App-logo" alt="Teacher" />
         <div>シンプルな英単語アプリ</div>
         <div>{choicedatadisplay}</div>
+        {/* ここで編集するを押すとすべての単語が出てくるようにする。 */}
+        {displaydata.length > 0 && (
+          <div>
+            <button onClick={() => setdisplaydatasllshowflg(!displaydataallshowflg)}>
+              {displaydataallshowflg ? "閉じる" : "単語をすべて表示する"}
+            </button>
+          </div>
+        )}
+        {
+          displaydataallshowflg ? (Object.entries(displaydata).map(([key, value], index) => (
+            <div key={index}>
+              <div>{key}</div>
+              <div>
+                {JSON.stringify(value["key"])}:
+                {JSON.stringify(value["value"])}
+                <button onClick={() => itemdelete(value["id"])} style={{ backgroundColor: 'red', color: 'white', border: 'none', borderRadius: '4px', padding: '8px 16px', cursor: 'pointer' }}>削除する</button>
+              </div>
+            </div>
+          ))):(<div></div>)
+
+        }
+        {/* {Object.entries(displaydata).map(([key, value], index) => (
+          <div key={index}>
+            <div>{key}</div>
+            <div>
+              {JSON.stringify(value["key"])}:
+              {JSON.stringify(value["value"])}
+              <button onClick={() => itemdelete(value["id"])} style={{ backgroundColor: 'red', color: 'white', border: 'none', borderRadius: '4px', padding: '8px 16px', cursor: 'pointer' }}>削除する</button>
+            </div>
+          </div>
+        ))} */}
+        {/* {rondomdata.length > 0 ? (<button onClick={() => getRandom(rondomdata)}>単語を表示する。</button>) : (Object.entries(displaydata).map(([key, value], index) => (
+          <div>アイテムがなくなりました。</div>
+        )))} */}
+
         {/* <p>
           Edit <code>src/App.tsx</code> and save to reload.
         </p> */}
