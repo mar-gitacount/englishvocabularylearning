@@ -29,6 +29,7 @@ function App() {
   const [userchoiceitems, setUserchoiceItems] = useState<string[]>([]);
   const [flg, setFlag] = useState(false);
   const [newdic, setNewdic] = useState<DisplayDataValue[]>([]);
+
   // デフォルトで読みこむjsonファイル
   const [Jsonitems, JsonsetItems] = useState<typeof ItemData>(ItemData);
   // 日本語
@@ -70,6 +71,71 @@ function App() {
   const dateversion = 1
   const currentDate = new Date();
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+    console.log(file.name,"はjsonのファイルネームINDEXキーになるやつ")
+    
+
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const json = e.target?.result as string;
+      try {
+        const data = JSON.parse(json);
+        if (Array.isArray(data)) {
+          Object.entries(data).forEach(([key, value]) => {
+            // 以下をファイル名から抽出するようにする。
+            const Indexkey = String(file.name.replace('.json',''));
+            // const Indexkey = String(key)
+            // 検索するための検索キーを追加する。
+            console.log(`アップロードしたjsonの${key}と${JSON.stringify(value)}`);
+            // ここでは単一データのループが実行されている。
+            console.log(`indexdbにアップするやつ→${value["key"]}`);
+            return addMemoData(dbName,version,Indexkey,value["key"],value["item"],objectID)
+            Object.entries(value).forEach(([k, item]) => {
+              // 以下をローカルDBに入れる。
+              console.log(JSON.stringify(item))
+              console.log(`大本キー${key} キー${k} アイテム${item}`)
+              // ?ここでアイテム数を追加している。
+              // return addMemoData(dbName, version, Indexkey, k, item, objectID)
+            })
+            // upDateData(dbName, version, data.dogdataid, data.id, datestring, objectID, indexdpadddata);
+            // setItems(prevItems => [...prevItems, key]); // 状態にキーを追加
+            getAllIndexes(dbName, objectID, version)
+
+          });
+
+
+
+          console.log(`${data}はアップロードしたJSONファイルの値`)
+          // setDisplayData(data);
+        } else {
+          console.error("Invalid JSON format: expected an array");
+        }
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownloadJson = () => {
+    const sectionname = choicedatadisplay
+    const dataToSave = {
+      sectionname: displaydata,
+    };
+    // const json = JSON.stringify(dataToSave, null, 2); // JSON形式に変換
+    const json = JSON.stringify(displaydata, null, 2); // JSON形式に変換
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${choicedatadisplay}.json`;
+    a.click();
+    URL.revokeObjectURL(url); // 解放
+  };
 
   // ?ランダムにデータを抽出する関数
   const getRandom = async (array: any) => {
@@ -328,6 +394,7 @@ function App() {
         {/* <img src={logo} className="App-logo" alt="logo" /> */}
         <img src="/teacher_english_man_casual.png" className="App-logo" alt="Teacher" />
         <div>シンプルな英単語アプリ</div>
+        <input type="file" accept=".json" onChange={handleFileChange} />
         <div>{choicedatadisplay}</div>
         {/* ここで編集するを押すとすべての単語が出てくるようにする。 */}
         {displaydata.length > 0 && (
@@ -335,6 +402,7 @@ function App() {
             <button onClick={() => setdisplaydatasllshowflg(!displaydataallshowflg)}>
               {displaydataallshowflg ? "閉じる" : "単語をすべて表示する"}
             </button>
+            <button onClick={handleDownloadJson}>JSONをダウンロード</button>
           </div>
         )}
         {
@@ -476,6 +544,7 @@ function App() {
           </div>
 
           <button type="submit">送信</button>
+
         </form>
         {loading ? 'Loading...' : ''}
         <div>
