@@ -93,7 +93,7 @@ function App() {
             console.log(`アップロードしたjsonの${key}と${JSON.stringify(value)}`);
             // ここでは単一データのループが実行されている。
             console.log(`indexdbにアップするやつ→${value["key"]}`);
-            return addMemoData(dbName,version,Indexkey,value["key"],value["item"],objectID)
+            return addMemoData(dbName,version,Indexkey,value["key"],value["value"],objectID)
             Object.entries(value).forEach(([k, item]) => {
               // 以下をローカルDBに入れる。
               console.log(JSON.stringify(item))
