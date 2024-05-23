@@ -2,7 +2,7 @@
 // @ts-ignore
 import React, { useState, useEffect } from 'react';
 import ItemData from './data/items.json';
-import { checkDatabaseExists, openDatabase, addMemoData, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems, openDatabasenext, getIndexKeys } from './utils/indexDBUtils';
+import { checkIfValueExists, checkDatabaseExists, openDatabase, getItemByPrimaryKeyAndValue,addMemoData, checkKeyExists, searchItems, deleteRequest, upDateData,checkReuest ,getAllIndexes, getIndexItems, openDatabasenext, getIndexKeys } from './utils/indexDBUtils';
 import fs from 'fs';
 
 import logo from './logo.svg';
@@ -71,12 +71,13 @@ function App() {
   const dateversion = 1
   const currentDate = new Date();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
 
     const file = event.target.files?.[0];
     if (!file) return;
-    console.log(file.name,"はjsonのファイルネームINDEXキーになるやつ")
-    
+    console.log(file.name, "はjsonのファイルネームINDEXキーになるやつ")
+
+
 
 
     const reader = new FileReader();
@@ -87,13 +88,36 @@ function App() {
         if (Array.isArray(data)) {
           Object.entries(data).forEach(([key, value]) => {
             // 以下をファイル名から抽出するようにする。
-            const Indexkey = String(file.name.replace('.json',''));
+            const Indexkey = String(file.name.replace('.json', ''));
             // const Indexkey = String(key)
             // 検索するための検索キーを追加する。
             console.log(`アップロードしたjsonの${key}と${JSON.stringify(value)}`);
             // ここでは単一データのループが実行されている。
-            console.log(`indexdbにアップするやつ→${value["key"]}`);
-            return addMemoData(dbName,version,Indexkey,value["key"],value["value"],objectID)
+            console.log(`indexdbにアップするやつ→${value["value"]}`);
+            // const searchItems = (dbName: string, objectStoreName: string, indexName: string, searchKey: any)
+            // checkKeyExists = (dbName: string, objectStore: string, key: any): Promise<boole
+            console.log(`${Indexkey}はインデックスキー${value["value"]}`)
+            // 関数を呼び出して、Promiseを処理
+            // async function getIndexItems(
+            //   dbName: string,
+            //   objectStoreName: string,
+            //   version: number,
+            //   indexName: string,
+            //   keyname: string
+            // ):
+            // const result = getIndexItems(dbName, objectID, version, Indexkey, value["value"])
+            // const result = await getIndexItems(dbName, objectID, version, IndexName, num)
+            // 以下で値を確認する。フィルターする！
+
+            //! const result = getIndexItems(dbName, objectID, version, IndexName,Indexkey)
+            //! console.log(result, "結果確認!!!これをフィルターする。")
+            // checkReuest(dbName,version,objectID,Indexkey)
+            // checkKeyExists(dbName,objectID,IndexName)
+            const testcheck = getItemByPrimaryKeyAndValue(dbName,objectID,Indexkey,IndexName,value["key"], value["value"])
+  
+            // console.log(`${json.stringify(Itemcheck)}はアイテムが存在している`)
+            // return addMemoData(dbName, version, Indexkey, value["key"], value["value"], objectID)
+
             Object.entries(value).forEach(([k, item]) => {
               // 以下をローカルDBに入れる。
               console.log(JSON.stringify(item))
@@ -106,7 +130,7 @@ function App() {
             getAllIndexes(dbName, objectID, version)
 
           });
-
+          getAllIndexes(dbName, objectID, version)
 
 
           console.log(`${data}はアップロードしたJSONファイルの値`)
@@ -176,7 +200,7 @@ function App() {
   };
 
   const itemdelete = (id: number) => {
-    alert(id)
+    // alert(id)
     // indexdbから削除かつdisplaydataからも削除する。
     // deleteRequest(dbName,version,objectID,String(id))
 
@@ -394,6 +418,7 @@ function App() {
         {/* <img src={logo} className="App-logo" alt="logo" /> */}
         <img src="/teacher_english_man_casual.png" className="App-logo" alt="Teacher" />
         <div>シンプルな英単語アプリ</div>
+        <div>↓他の端末からダウンロードしたファイルをアップロードする。</div>
         <input type="file" accept=".json" onChange={handleFileChange} />
         <div>{choicedatadisplay}</div>
         {/* ここで編集するを押すとすべての単語が出てくるようにする。 */}
@@ -402,7 +427,7 @@ function App() {
             <button onClick={() => setdisplaydatasllshowflg(!displaydataallshowflg)}>
               {displaydataallshowflg ? "閉じる" : "単語をすべて表示する"}
             </button>
-            <button onClick={handleDownloadJson}>JSONをダウンロード</button>
+            <button onClick={handleDownloadJson}>英単語アプリファイルをダウンロード</button>
           </div>
         )}
         {
@@ -415,7 +440,7 @@ function App() {
                 <button onClick={() => itemdelete(value["id"])} style={{ backgroundColor: 'red', color: 'white', border: 'none', borderRadius: '4px', padding: '8px 16px', cursor: 'pointer' }}>削除する</button>
               </div>
             </div>
-          ))):(<div></div>)
+          ))) : (<div></div>)
 
         }
         {/* {Object.entries(displaydata).map(([key, value], index) => (

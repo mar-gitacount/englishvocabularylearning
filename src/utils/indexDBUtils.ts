@@ -140,6 +140,26 @@ const deleteDatabase = (dbName: string): Promise<void> => {
   });
 };
 
+const checkReuest = (dbname: string, version: number, objectStore: string, primaryKey: any): Promise<boolean> => {
+  return new Promise<boolean>((resolve, reject) => {
+    const request = indexedDB.open(dbname, version);
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
+      const transaction = db.transaction([objectStore], 'readwrite');
+      const objectStoreName = transaction.objectStore(objectStore);
+      const index = objectStoreName.index(primaryKey)
+      
+
+    }
+
+  });
+}
+
 const deleteRequest = (dbname: string, version: number, objectStore: string, primaryKey: any): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
     const request = indexedDB.open(dbname, version);
@@ -157,7 +177,7 @@ const deleteRequest = (dbname: string, version: number, objectStore: string, pri
 
       deleteRequest.onsuccess = () => {
         console.log("レコード削除しました。", primaryKey);
-       
+
       };
 
       deleteRequest.onerror = (error) => {
@@ -171,11 +191,11 @@ const deleteRequest = (dbname: string, version: number, objectStore: string, pri
         resolve(); // 成功したらPromiseを解決する
       };
 
-      transaction.onerror = (event:any) => {
+      transaction.onerror = (event: any) => {
         console.error("トランザクション中にエラーが発生しました:", event.target.error);
         reject(event.target.error);
       };
-      
+
 
     };
 
@@ -244,25 +264,39 @@ const addDataByHour = (dbName: string, version: number, data: any, objectStore: 
 const checkKeyExists = (dbName: string, objectStore: string, key: any): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(dbName);
+
     request.onsuccess = () => {
       const db = request.result;
       const transaction = db.transaction(objectStore, 'readonly');
       const store = transaction.objectStore(objectStore);
-      const getRequest = store.getKey(key);
+      const getRequest = store.get(key);
+
       getRequest.onsuccess = () => {
         const result = getRequest.result;
+        console.log(result !== undefined ? `${key}はキーアイテムを確認しました` : `${key}は存在しません`);
         resolve(result !== undefined);
       };
+
       getRequest.onerror = () => {
         reject(getRequest.error);
       };
     };
+
     request.onerror = () => {
       reject(request.error);
     };
+
+    request.onupgradeneeded = (event) => {
+      // データベースのバージョンが上がった場合の処理
+      console.log('データベースのバージョンが上がった場合の処理をここに追加します');
+    };
+
+    request.onblocked = () => {
+      // データベースがブロックされた場合の処理
+      console.log('データベースがブロックされました');
+    };
   });
 };
-
 
 
 
@@ -405,7 +439,7 @@ const getAllIndexes = (dbName: string, objectStoreName: string, version: number)
         const request = event.target as IDBRequest<IDBCursorWithValue | null>;
         if (request.result) {
           const cursor = request.result;
-          // console.log(`キーを確認！！: ${cursor.key}, 値: ${JSON.stringify(cursor.value)}`);
+          console.log(`キーを確認！！: ${cursor.key}, 値: ${JSON.stringify(cursor.value)}`);
           cursor.continue();  // 次のアイテムへカーソルを進める
         } else {
           console.log('インデックス内の全アイテムの確認が完了しました。');
@@ -440,6 +474,7 @@ const getIndexKeys = (
         const cursor = (event.target as IDBRequest<IDBCursor>).result;
         if (cursor) {
           keys.add(cursor.key as string);
+         
           cursor.continue();
         } else {
           resolve(Array.from(keys));
@@ -454,7 +489,113 @@ const getIndexKeys = (
 };
 
 
+const checkIfValueExists = (dbName: string, objectStoreName: string, indexKeyName: string, valueToCheck: any): Promise<boolean> => {
+  return new Promise<boolean>((resolve, reject) => {
+    const request: IDBOpenDBRequest = indexedDB.open(dbName);
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = () => {
+      const db: IDBDatabase = request.result;
+      const transaction: IDBTransaction = db.transaction(objectStoreName, 'readonly');
+      const objectStore: IDBObjectStore = transaction.objectStore(objectStoreName);
+
+      const index: IDBIndex | null = objectStore.index(indexKeyName);
+      if (!index) {
+        reject(`Index key "${indexKeyName}" not found in object store "${objectStoreName}".`);
+        return;
+      }
+
+      // const getRequest = index.get(valueToCheck);
+      const getRequest = objectStore.index(indexKeyName).get(valueToCheck);
+
+
+      getRequest.onsuccess = () => {
+        const result = getRequest.result;
+        if (result !== undefined) {
+          resolve(true); // 値が見つかった場合
+        } else {
+          resolve(false); // 値が見つからなかった場合
+        }
+      };
+
+      getRequest.onerror = () => {
+        reject(getRequest.error);
+      };
+    };
+
+    request.onupgradeneeded = () => {
+      // データベースのバージョンが上がった場合の処理
+    };
+
+    request.onblocked = () => {
+      // データベースがブロックされた場合の処理
+    };
+  });
+};
 
 
 
-export { openDatabase, openDatabasenext, checkDatabaseExists, deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems ,getIndexKeys};
+
+const getItemByPrimaryKeyAndValue = (dbName: string, objectStoreName: string, primaryKey: any, indexName: string, valueToCheck: any,value:any): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName);
+
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(objectStoreName, 'readonly');
+      const objectStore = transaction.objectStore(objectStoreName);
+      const index = objectStore.index(indexName);
+      // const getRequest = index.getAll(primaryKey)
+      const getRequest = index.openCursor(primaryKey)
+      const items: any[] = [];
+      getRequest.onsuccess = (event:Event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const item = cursor.value;
+          items.push(item);
+          cursor.continue();
+        } else {
+          // フィルタリングされたアイテムの中から指定されたアイテム名と一致するものを取得する
+          const filteredItems = items.filter((item) => item.key === valueToCheck);
+          if (filteredItems.length > 0) {
+            console.log('Matching Items:', filteredItems);
+            resolve(true)
+          } else {
+            console.log('No matching item found');
+            const version = 1
+            addMemoData(dbName, version, primaryKey,  valueToCheck, value, objectStoreName)
+            resolve(false)
+          }
+          // resolve();
+        }
+      }
+      // const getRequest = objectStore.get(primaryKey);
+
+      // getRequest.onsuccess = () => {
+      //   const result = getRequest.result;
+      //   console.log(result)
+      //   if (result) {
+      //     console.log(result,"アイテムが見つかった")
+      //     resolve(result);
+      //   } else {
+      //     console.log(result["key"],"アイテムがない")
+      //     resolve(null); // 条件に一致するアイテムが見つからなかった場合
+      //   }
+      // };
+
+      getRequest.onerror = () => {
+        reject(getRequest.error);
+      };
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+};
+
+
+
+export { openDatabase, openDatabasenext, checkDatabaseExists,getItemByPrimaryKeyAndValue ,deleteDatabase, addMemoData, addDataByHour, addMemoDataHour, checkKeyExists, searchItems, deleteRequest, upDateData, getAllIndexes, getIndexItems, getIndexKeys, checkIfValueExists,checkReuest };
